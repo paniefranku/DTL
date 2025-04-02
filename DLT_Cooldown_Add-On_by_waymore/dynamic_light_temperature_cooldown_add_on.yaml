@@ -1,0 +1,58 @@
+# =============================================================
+# ===              blueprint created by waymore.cc          ===
+# ===                  code concept: v1.0                   ===
+# =============================================================
+
+blueprint:
+  name: "Cooldown blokady dynamicznej temperatury światła"
+  description: >
+    Automatycznie wyłącza blokadę automatycznych zmian temperatury barwowej po określonym czasie.
+    Gdy blokada (np. po ręcznej zmianie światła) zostanie włączona, automatyzacja odczeka zadany czas,
+    a następnie wyłączy blokadę, przywracając działanie automatycznych aktualizacji.
+    Dla każdej instancji automatyzacji dynamicznej temperatury możesz ustawić osobną blokadę.
+  domain: automation
+  input:
+    block_entity:
+      name: "Blokada automatycznych zmian"
+      description: >
+        Przełącznik (input_boolean), który tymczasowo blokuje automatyczne zmiany temperatury światła
+        – np. po ręcznej zmianie barwy.
+      selector:
+        entity:
+          domain: input_boolean
+
+    cooldown_duration:
+      name: "Czas trwania blokady (minuty)"
+      description: >
+        Po ilu minutach od aktywacji blokada ma zostać automatycznie wyłączona.
+      default: 60
+      selector:
+        number:
+          min: 1
+          max: 1440
+          unit_of_measurement: min
+
+    linked_automation:
+      name: "Powiązana automatyzacja dynamicznej temperatury"
+      description: >
+        Opcjonalnie wybierz automatyzację, która korzysta z tej blokady – ułatwi to organizację i przegląd w interfejsie.
+      default: ""
+      selector:
+        entity:
+          domain: automation
+
+trigger:
+  # Automation triggers when the block is activated
+  - platform: state
+    entity_id: !input block_entity
+    to: "on"
+
+action:
+  # Wait for the specified cooldown duration
+  - delay:
+      minutes: !input cooldown_duration
+
+  # Turn off the block – restore automatic updates
+  - service: input_boolean.turn_off
+    target:
+      entity_id: !input block_entity

@@ -1,0 +1,25 @@
+
+blueprint:
+  name: Cooldown blokady dynamicznej temperatury światła
+  description: >
+    Automatycznie wyłącza blokadę automatycznych zmian temperatury barwowej po określonym czasie.
+    Gdy blokada (np. po ręcznej zmianie światła) zostanie włączona, automatyzacja odczeka zadany czas,
+    a następnie wyłączy blokadę, przywracając działanie automatycznych aktualizacji.
+    Dla każdej instancji automatyzacji dynamicznej temperatury możesz ustawić osobną blokadę.
+
+  input:
+    block_entity:
+      name: Blokada automatycznych zmian
+      description: >
+        Przełącznik (input_boolean), który tymczasowo blokuje automatyczne zmiany temperatury światła
+        – np. po ręcznej zmianie barwy.
+
+    cooldown_duration:
+      name: Czas trwania blokady (minuty)
+      description: >
+        Po ilu minutach od aktywacji blokada ma zostać automatycznie wyłączona.
+
+    linked_automation:
+      name: Powiązana automatyzacja dynamicznej temperatury
+      description: >
+        Opcjonalnie wybierz automatyzację, która korzysta z tej blokady – ułatwi to organizację i przegląd w interfejsie.

@@ -1,0 +1,53 @@
+
+blueprint:
+  name: Dynamiczna temperatura światła
+  description: >
+    Automatycznie ustawia temperaturę barwową wybranych świateł w zależności od pory dnia i jasności.
+    Wieczorem i w nocy światło staje się cieplejsze. Im mniejsza jasność, tym cieplejsza barwa.
+    Możesz też wstrzymać automatyczne zmiany – np. gdy ręcznie zmienisz barwę światła.
+
+  input:
+    lights:
+      name: Światła do sterowania
+      description: Światła, których temperaturą barwową chcesz sterować automatycznie.
+
+    update_block:
+      name: Blokada automatycznych zmian
+      description: >
+        Opcjonalny przełącznik, który blokuje automatyczne zmiany temperatury (np. po ręcznej zmianie).
+
+    sunset_offset:
+      name: Przesunięcie względem zachodu słońca (minuty)
+      description: Czas przesunięcia względem zachodu słońca (w minutach).
+
+    night_fraction:
+      name: Długość ocieplania po zachodzie (ułamek nocy)
+      description: >
+        Ułamek nocy, który określa jak długo po zachodzie słońca światło ma się ocieplać.
+
+    cool_start:
+      name: Godzina rozpoczęcia ochładzania światła
+      description: O której godzinie (0–23) światło ma zacząć wracać do chłodniejszych barw.
+
+    cool_end:
+      name: Godzina zakończenia ochładzania światła
+      description: O której godzinie (0–23) ochładzanie ma się zakończyć.
+
+    warm_ratio:
+      name: Proporcje ocieplania barwy przy niższej jasności
+      description: >
+        Określa, jak bardzo światło ma się ocieplać przy niższej jasności.
+
+    min_temp_offset:
+      name: Zwiększenie minimalnej temperatury (K)
+      description: Podwyższenie minimalnej dozwolonej temperatury barwowej.
+
+    max_temp_offset:
+      name: Obniżenie maksymalnej temperatury (K)
+      description: Obniżenie maksymalnej dozwolonej temperatury barwowej.
+
+    manual_threshold:
+      name: Próg wykrywania ręcznej zmiany (K)
+      description: >
+        Jeśli temperatura światła różni się o więcej niż ta wartość (w Kelwinach),
+        automatyzacja uznaje to za zmianę ręczną i aktywuje blokadę.

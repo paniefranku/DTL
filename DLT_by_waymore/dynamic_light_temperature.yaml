@@ -1,0 +1,218 @@
+# =============================================================
+# ===              blueprint created by waymore.cc          ===
+# ===                  code concept: v1.0                   ===
+# =============================================================
+
+blueprint:
+  name: "Dynamiczna temperatura światła"
+  description: >
+    Automatycznie ustawia temperaturę barwową wybranych świateł w zależności od pory dnia i jasności.
+    Wieczorem i w nocy światło staje się cieplejsze. Im mniejsza jasność, tym cieplejsza barwa.
+    Możesz też wstrzymać automatyczne zmiany – np. gdy ręcznie zmienisz barwę światła.
+  domain: automation
+  input:
+    lights:
+      name: "Światła do sterowania"
+      description: "Światła, których temperaturą barwową chcesz sterować automatycznie."
+      selector:
+        entity:
+          domain: light
+          multiple: true
+
+    update_block:
+      name: "Blokada automatycznych zmian"
+      description: >
+        Opcjonalny przełącznik, który blokuje automatyczne zmiany temperatury (np. po ręcznej zmianie).
+      default: ""
+      selector:
+        entity:
+          domain: input_boolean
+
+    sunset_offset:
+      name: "Przesunięcie względem zachodu słońca (minuty)"
+      default: 0
+      selector:
+        number:
+          min: -60
+          max: 60
+          unit_of_measurement: min
+
+    night_fraction:
+      name: "Długość ocieplania po zachodzie (ułamek nocy)"
+      default: 0.3333
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 0.01
+
+    cool_start:
+      name: "Godzina rozpoczęcia ochładzania światła"
+      default: 7
+      selector:
+        number:
+          min: 0
+          max: 23
+          step: 1
+
+    cool_end:
+      name: "Godzina zakończenia ochładzania światła"
+      default: 8
+      selector:
+        number:
+          min: 0
+          max: 23
+          step: 1
+
+    warm_ratio:
+      name: "Proporcje ocieplania barwy przy niższej jasności"
+      default: 0.6667
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 0.01
+
+    min_temp_offset:
+      name: "Zwiększenie minimalnej temperatury (K)"
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 500
+          step: 1
+
+    max_temp_offset:
+      name: "Obniżenie maksymalnej temperatury (K)"
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 500
+          step: 1
+
+    manual_threshold:
+      name: "Próg wykrywania ręcznej zmiany (K)"
+      default: 200
+      selector:
+        number:
+          min: 0
+          max: 1000
+          step: 1
+
+mode: restart
+
+trigger:
+  # Automation triggers every minute (when seconds = 0) or on brightness change of selected lights
+  - platform: time_pattern
+    seconds: 0
+  - platform: state
+    entity_id: !input lights
+    attribute: brightness
+
+action:
+  # Set main variables from blueprint inputs
+  - variables:
+      offset_min_kelvin: !input min_temp_offset
+      offset_max_kelvin: !input max_temp_offset
+      sunset_shift_min: !input sunset_offset
+      night_fraction: !input night_fraction
+      morning_warm_start_hour: !input cool_start
+      morning_warm_end_hour: !input cool_end
+      time_brightness_ratio: !input warm_ratio
+      manual_change_threshold: !input manual_threshold
+      block_entity: !input update_block
+
+  - delay: "00:00:00.2" # Short pause to let states update
+
+  - repeat:
+      for_each: !input lights
+      sequence:
+        - variables:
+            light_id: "{{ repeat.item }}"
+
+        - delay: "00:00:00.1"
+
+        - choose:
+            - conditions:
+                # If the light is off or brightness = 0, turn it off and skip further actions
+                - condition: template
+                  value_template: >
+                    {{ is_state(light_id, 'off') or (state_attr(light_id, 'brightness')|default(255, true)|int == 0) }}
+              sequence:
+                - service: light.turn_off
+                  target:
+                    entity_id: "{{ light_id }}"
+
+          default:
+            # Fetch data and calculate boundary values
+            - variables:
+                brightness_ratio: "{{ (state_attr(light_id, 'brightness')|default(255, true)|float) / 255 }}"
+                kelvin_min_cap: "{{ state_attr(light_id, 'min_color_temp_kelvin')|default(3000, true)|int }}"
+                kelvin_max_cap: "{{ state_attr(light_id, 'max_color_temp_kelvin')|default(6500, true)|int }}"
+                temp_min: "{{ kelvin_min_cap + offset_min_kelvin }}"
+                temp_max: "{{ kelvin_max_cap - ((kelvin_max_cap - kelvin_min_cap) * 0.15) - offset_max_kelvin }}"
+                night_target_temp: "{{ temp_max - time_brightness_ratio * (temp_max - temp_min) }}"
+                sunrise_ts: "{{ state_attr('sun.sun', 'next_rising')|as_timestamp }}"
+                sunset_next_ts: "{{ state_attr('sun.sun', 'next_setting')|as_timestamp }}"
+                now_ts: "{{ now()|as_timestamp }}"
+                sunset_prev_ts: "{{ sunset_next_ts - 86400 }}"
+                sunset_adjusted: "{{ sunset_prev_ts + (sunset_shift_min * 60) }}"
+                night_duration: "{{ sunrise_ts - sunset_adjusted }}"
+                warmup_duration_seconds: "{{ night_duration * night_fraction }}"
+                today_date: "{{ now().strftime('%Y-%m-%d') }}"
+                warmup_start_ts: "{{ (today_date ~ 'T' ~ '%02d:00:00'|format(morning_warm_start_hour)) | as_timestamp }}"
+                warmup_end_ts: "{{ (today_date ~ 'T' ~ '%02d:00:00'|format(morning_warm_end_hour)) | as_timestamp }}"
+
+            # Calculate base temperature depending on time of day
+            - variables:
+                daytime_base_temp: >
+                  {% if now_ts < sunset_adjusted %}
+                    {{ temp_max }}
+                  {% elif now_ts < (sunset_adjusted + warmup_duration_seconds) %}
+                    {% set factor = (now_ts - sunset_adjusted) / warmup_duration_seconds %}
+                    {{ temp_max - factor * (temp_max - night_target_temp) }}
+                  {% elif now_ts < warmup_start_ts %}
+                    {{ night_target_temp }}
+                  {% elif now_ts < warmup_end_ts %}
+                    {% set factor = (now_ts - warmup_start_ts) / (warmup_end_ts - warmup_start_ts) %}
+                    {{ night_target_temp + factor * (temp_max - night_target_temp) }}
+                  {% else %}
+                    {{ temp_max }}
+                  {% endif %}
+
+            # Adjust final temperature based on brightness
+            - variables:
+                brightness_temp_adjustment: "{{ (1 - brightness_ratio) * ((temp_max - temp_min) * (1 - time_brightness_ratio)) }}"
+                final_target_temp: "{{ [daytime_base_temp - brightness_temp_adjustment, temp_min]|max }}"
+                current_light_temp: "{{ state_attr(light_id, 'color_temp_kelvin')|default(0, true)|float }}"
+
+            # Detect manual override — if large difference, block updates
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: >
+                        {% if current_light_temp %}
+                          {{ (current_light_temp - final_target_temp)|abs > manual_change_threshold }}
+                        {% else %}
+                          false
+                        {% endif %}
+                  sequence:
+                    - service: light.turn_on
+                      target:
+                        entity_id: "{{ light_id }}"
+                      data:
+                        color_temp_kelvin: "{{ current_light_temp|round }}"
+                    - condition: template
+                      value_template: "{{ block_entity != '' }}"
+                    - service: input_boolean.turn_on
+                      data:
+                        entity_id: "{{ block_entity }}"
+
+              # If everything is OK – set temperature automatically
+              default:
+                - service: light.turn_on
+                  target:
+                    entity_id: "{{ light_id }}"
+                  data:
+                    color_temp_kelvin: "{{ final_target_temp|round }}"

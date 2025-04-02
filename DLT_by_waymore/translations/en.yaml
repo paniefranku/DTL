@@ -1,0 +1,54 @@
+
+blueprint:
+  name: Dynamic Light Temperature
+  description: >
+    Automatically adjusts the color temperature of selected lights based on time of day and brightness.
+    In the evening and at night, the light becomes warmer. Lower brightness means warmer color.
+    You can also temporarily block automatic updates – e.g. after manually changing the color temperature.
+
+  input:
+    lights:
+      name: Lights to control
+      description: Lights whose color temperature will be adjusted automatically.
+
+    update_block:
+      name: Block automatic changes
+      description: >
+        Optional toggle (input_boolean) that blocks automatic temperature changes,
+        e.g. after a manual adjustment.
+
+    sunset_offset:
+      name: Sunset offset (minutes)
+      description: Time offset (in minutes) from the actual sunset time.
+
+    night_fraction:
+      name: Warm-up duration after sunset (night fraction)
+      description: >
+        Fraction of the night used to gradually warm up the color temperature after sunset.
+
+    cool_start:
+      name: Start time of morning cooldown (hour)
+      description: Hour (0–23) when the light should begin to cool down back to daylight temperature.
+
+    cool_end:
+      name: End time of morning cooldown (hour)
+      description: Hour (0–23) when the cooldown ends and daylight color is restored.
+
+    warm_ratio:
+      name: Warm-up ratio for lower brightness
+      description: >
+        Defines how much the light warms up based on lower brightness levels.
+
+    min_temp_offset:
+      name: Increase minimum color temperature (K)
+      description: Shifts the minimum allowed color temperature upward.
+
+    max_temp_offset:
+      name: Decrease maximum color temperature (K)
+      description: Lowers the maximum allowed color temperature.
+
+    manual_threshold:
+      name: Manual change detection threshold (K)
+      description: >
+        If the current light temperature deviates by more than this value (in Kelvin),
+        the automation assumes a manual override and activates the block toggle.

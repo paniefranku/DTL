@@ -1,0 +1,26 @@
+
+blueprint:
+  name: Cooldown for Dynamic Light Temperature Block
+  description: >
+    Automatically disables the input_boolean block after a set cooldown time.
+    When the block (e.g. triggered by a manual light change) is turned on,
+    the automation waits for a defined period and then turns it off again,
+    restoring automatic color temperature control.
+    Each instance of the dynamic temperature automation can use a separate block toggle.
+
+  input:
+    block_entity:
+      name: Block automatic changes
+      description: >
+        A toggle (input_boolean) used to temporarily block automatic light temperature updates,
+        typically triggered after a manual change.
+
+    cooldown_duration:
+      name: Block duration (minutes)
+      description: >
+        How many minutes the block should stay active before it is automatically cleared.
+
+    linked_automation:
+      name: Linked dynamic temperature automation
+      description: >
+        Optionally select the related automation using this block – useful for clarity in the UI.
